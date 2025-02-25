@@ -1,0 +1,26 @@
+{
+  "name": "Disparador-WhatsApp",
+  "version": "1.0.0",
+  "description": "Sistema para agendamento de mensagens publicitárias no WhatsApp via WhatsApp API.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "fs": "0.0.1-security",
+    "path": "^0.12.7",
+    "qrcode": "^1.5.1",
+    "whatsapp-web.js": "^1.22.6",
+    "socket.io": "^4.7.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["whatsapp", "bot", "agendamento", "mensagens"],
+  "author": "Thiago Ciavolela",
+  "license": "MIT"
+}

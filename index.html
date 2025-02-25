@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamento de Mensagens</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .container {
+            max-width: 800px;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #212529, #212529);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .btn-primary {
+            background-color: #212529;
+            border: none;
+            transition: 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: #212529;
+        }
+
+        .table {
+            background-color: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        thead {
+            background-color: #212529;
+            color: #fff;
+        }
+
+        th,
+        td {
+            text-align: center;
+            padding: 10px;
+        }
+
+        #qrCodeContainer {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #qrCodeContainer img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .form-label {
+            font-weight: bold;
+        }
+
+        .form-control {
+            border-radius: 5px;
+        }
+
+        .status-message {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="p-3 text-bg-dark">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+                <img src="https://sistemamkt.com.br/images/logo_dark.png">
+                <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0" style="margin-left: 20px;">
+                    <li><a href="https://sistemamkt.com.br" class="nav-link px-2 text-white" target="_blank">VersãoPRO</a></li>
+                    <li><a href="https://api.whatsapp.com/send?phone=5511917080051&text=Ol%C3%A1,%20preciso%20de%20mais%20informa%C3%A7%C3%B5es, Sobre o Disparador" class="nav-link px-2 text-white" target="_blank">Fale conosco</a></li>
+                </ul>
+
+                <div class="text-end">
+                    <button id="generateQrCode" class="btn btn-success me-3" style="border-radius: 26px;">
+                        <i class="fas fa-qrcode"></i> Gerar QR Code
+                    </button>
+                    <button id="disconnectDevice" class="btn btn-danger me-3" style="border-radius: 26px;">
+                        <i class="fas fa-power-off"></i> Desconectar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-header">
+                Disparador de Mensagens Agendadas!
+            </div>
+            <div class="card-body">
+                <div id="qrCodeContainer"></div>
+                <div id="statusImage" class="text-center mb-3"></div>
+                <div id="status" class="text-center mb-3 status-message" style="color: #494e53;"></div>
+
+                <form id="scheduleForm">
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Digite a Mensagem:</label>
+                        <textarea class="form-control" id="message" name="message" rows="4" required
+                            style="border-radius: 26px;"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Arquivo de Números (.txt):</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".txt"
+                            style="border-radius: 26px;">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="scheduleTime" class="form-label">Data e Hora de Envio:</label>
+                        <input type="datetime-local" class="form-control" id="scheduleTime" name="scheduleTime" required
+                            style="border-radius: 26px;">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" style="border-radius: 26px;">
+                        <i class="fas fa-calendar-plus"></i> Agendar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <h3 class="mt-3 text-center"><i class="fas fa-check"></i> Lista de Mensagens Agendadas</h3>
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Data</th>
+                    <th>Hora</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="scheduledMessages"></tbody>
+        </table>
+    </div>
+
+    <script src="https://cdn.socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        document.getElementById("scheduleForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            // Captura os dados do formulário
+            const message = document.getElementById("message").value;
+            const scheduleTime = document.getElementById("scheduleTime").value;
+            const fileInput = document.getElementById("file");
+
+            let filePath = null;
+
+            // Envia o arquivo primeiro (se existir)
+            if (fileInput.files.length > 0) {
+                const formData = new FormData();
+                formData.append("file", fileInput.files[0]);
+
+                try {
+                    const uploadResponse = await fetch("/upload-file", {
+                        method: "POST",
+                        body: formData
+                    });
+                    const uploadResult = await uploadResponse.json();
+                    filePath = uploadResult.filePath; // Caminho do arquivo no servidor
+                } catch (error) {
+                    console.error("Erro ao enviar o arquivo:", error);
+                    alert("Erro ao enviar o arquivo. Tente novamente.");
+                    return;
+                }
+            }
+
+            // Envia os dados do agendamento
+            try {
+                const response = await fetch("/schedule-message", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message,
+                        scheduleTime,
+                        filePath // Inclui o caminho do arquivo (se existir)
+                    })
+                });
+
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                console.error("Erro ao enviar o formulário:", error);
+                alert("Ocorreu um erro ao enviar o formulário. Tente novamente.");
+            }
+        });
+
+        function formatarDataHora(isoString) {
+            const data = new Date(isoString);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            const horas = String(data.getHours()).padStart(2, '0');
+            const minutos = String(data.getMinutes()).padStart(2, '0');
+            return {
+                dataFormatada: `${dia}/${mes}/${ano}`,
+                horaFormatada: `${horas}:${minutos}`
+            };
+        }
+
+        function atualizarLista(mensagens) {
+            const tabela = document.getElementById("scheduledMessages");
+            tabela.innerHTML = "";
+            mensagens.forEach((msg) => {
+                const { dataFormatada, horaFormatada } = formatarDataHora(msg.scheduleTime);
+                const tr = document.createElement("tr");
+                tr.id = `tarefa-${msg.id}`;
+                tr.innerHTML = `
+                    <td>${msg.id}</td>
+                    <td>${dataFormatada}</td>
+                    <td>${horaFormatada}</td>
+                    <td><strong>${msg.status}</strong></td>
+                `;
+                tabela.appendChild(tr);
+            });
+        }
+
+        async function carregarMensagens() {
+            try {
+                const response = await fetch("/scheduled-messages");
+                const mensagens = await response.json();
+                atualizarLista(mensagens);
+            } catch (error) {
+                console.error("Erro ao carregar mensagens agendadas:", error);
+            }
+        }
+
+        function limparQRCode() {
+            const qrCodeContainer = document.getElementById("qrCodeContainer");
+            qrCodeContainer.innerHTML = ""; // Limpa o conteúdo do container do QR Code
+        }
+
+        socket.on("novaTarefa", (tarefa) => {
+            const { dataFormatada, horaFormatada } = formatarDataHora(tarefa.scheduleTime);
+            const tabela = document.getElementById("scheduledMessages");
+            const tr = document.createElement("tr");
+            tr.id = `tarefa-${tarefa.id}`;
+            tr.innerHTML = `
+                <td>${tarefa.id}</td>
+                <td>${dataFormatada}</td>
+                <td>${horaFormatada}</td>
+                <td><strong>${tarefa.status}</strong></td>
+            `;
+            tabela.appendChild(tr);
+        });
+
+        socket.on("atualizarStatus", (data) => {
+            const item = document.getElementById(`tarefa-${data.id}`);
+            if (item) {
+                item.children[3].innerHTML = `<strong>${data.status}</strong>`;
+            }
+        });
+
+        socket.on("qrCode", (url) => {
+            const qrCodeContainer = document.getElementById("qrCodeContainer");
+            qrCodeContainer.innerHTML = `<img src="${url}" alt="QR Code">`;
+        });
+
+        socket.on("ready", (message) => {
+            const status = document.getElementById("status");
+            const statusImage = document.getElementById("statusImage");
+
+            // Adiciona a imagem
+            statusImage.innerHTML = ``;
+
+            // Adiciona a mensagem de status
+            status.innerHTML = `<p>${message}</p>`;
+            limparQRCode(); // Limpa o QR Code após a conexão ser estabelecida
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            console.log("DOM totalmente carregado!");
+
+            const btnGenerateQrCode = document.getElementById("generateQrCode");
+            const btnDisconnectDevice = document.getElementById("disconnectDevice");
+
+            if (btnGenerateQrCode) {
+                btnGenerateQrCode.addEventListener("click", async () => {
+                    console.log("Botão Gerar QR Code clicado!");
+                    socket.emit("requestQrCode");
+                    try {
+                        const response = await fetch("/generate-qrcode", { method: "POST" });
+                        const result = await response.json();
+                        alert(result.message);
+                    } catch (error) {
+                        console.error("Erro ao gerar Qrcode:", error);
+                        alert("Erro ao gerar Qrcode.");
+                    }
+                });
+
+            } else {
+                console.error("Botão 'Gerar QR Code' não encontrado!");
+            }
+
+            if (btnDisconnectDevice) {
+                btnDisconnectDevice.addEventListener("click", async () => {
+                    console.log("Botão Desconectar clicado!");
+                    try {
+                        const response = await fetch("/logout", { method: "POST" });
+                        const result = await response.json();
+                        alert(result.message);
+                        document.getElementById("status").innerHTML = `<p style="color: red;">Desconectado</p>`;
+                        document.getElementById("qrCodeContainer").innerHTML = ""; // Limpa QR Code
+                    } catch (error) {
+                        console.error("Erro ao desconectar:", error);
+                        alert("Erro ao desconectar.");
+                    }
+                });
+            } else {
+                console.error("Botão 'Desconectar' não encontrado!");
+            }
+        });
+
+        carregarMensagens();
+    </script>
+</body>
+
+</html>
