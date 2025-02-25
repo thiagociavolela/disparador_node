@@ -15,7 +15,7 @@ const io = socketIo(server);
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
-app.use(cors()); // ✅ Adiciona CORS
+app.use(cors()); // Adiciona CORS
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -25,7 +25,7 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// ✅ Configuração do cliente WhatsApp
+// Configuração do cliente WhatsApp
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -62,7 +62,7 @@ client.on("disconnected", (reason) => {
 
 client.initialize();
 
-// ✅ Função para ler números de um arquivo
+// Função para ler números de um arquivo
 const lerNumerosDoArquivo = (filePath) => {
     try {
         const data = fs.readFileSync(filePath, "utf8");
@@ -74,7 +74,7 @@ const lerNumerosDoArquivo = (filePath) => {
     }
 };
 
-// ✅ Função para enviar mensagens em massa
+// Função para enviar mensagens em massa
 async function enviarMensagens(message, tarefaId, filePath) {
     let numeros = filePath ? lerNumerosDoArquivo(filePath) : [];
 
@@ -98,7 +98,7 @@ async function enviarMensagens(message, tarefaId, filePath) {
             console.error(`Erro ao enviar mensagem para ${numero}:`, err.message);
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 50000)); // Aguarda 30s entre envios
+        await new Promise((resolve) => setTimeout(resolve, 50000)); // Aguarda 50s entre envios
     }
 
     const tarefa = tarefasAgendadas.find((t) => t.id === tarefaId);
@@ -119,7 +119,7 @@ app.post("/upload-file", upload.single("file"), (req, res) => {
     res.status(200).json({ filePath: req.file.path });
 });
 
-// ✅ Rota para agendar mensagens
+// Rota para agendar mensagens
 app.post("/schedule-message", (req, res) => {
     const { message, scheduleTime, filePath } = req.body;
 
@@ -152,7 +152,7 @@ app.post("/schedule-message", (req, res) => {
     io.emit("novaTarefa", { id, scheduleTime, status: "Agendado" });
 });
 
-// ✅ Rota para listar mensagens agendadas
+// Rota para listar mensagens agendadas
 app.get("/scheduled-messages", (req, res) => {
     const tarefasSemTimeout = tarefasAgendadas.map(({ id, scheduleTime, status }) => ({
         id,
@@ -163,7 +163,7 @@ app.get("/scheduled-messages", (req, res) => {
     res.json(tarefasSemTimeout);
 });
 
-// ✅ Rota para obter informações da instância do WhatsApp
+// Rota para obter informações da instância do WhatsApp
 app.get("/instance-info", async (req, res) => {
     try {
         const info = await client.getState();
@@ -178,7 +178,7 @@ app.get("/instance-info", async (req, res) => {
     }
 });
 
-// ✅ Rota para enviar mensagem via HTTP (Frontend)
+// Rota para enviar mensagem via HTTP (Frontend)
 app.post("/send-message", async (req, res) => {
     const { numero, mensagem } = req.body;
 
@@ -224,7 +224,7 @@ app.post("/logout", async (req, res) => {
     }
 });
 
-// ✅ Configurar WebSockets
+// Configurar WebSockets
 io.on("connection", (socket) => {
     console.log("Novo cliente conectado");
 
@@ -238,7 +238,7 @@ io.on("connection", (socket) => {
     });
 });
 
-// ✅ Iniciar servidor na porta 3000
+// Iniciar servidor na porta 3000
 const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
